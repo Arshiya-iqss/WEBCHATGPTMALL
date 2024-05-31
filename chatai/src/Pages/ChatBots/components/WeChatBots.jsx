@@ -8,11 +8,15 @@ import {
     SettingOutlined,
     SettingTwoTone,
 } from "@ant-design/icons";
-import { Button, Col, Dropdown, Modal, Popover, Segmented, Switch } from "antd";
-import React, { useState } from "react";
+import { Button, Col, Dropdown, Form, Input, Modal, Popover, Segmented, Switch } from "antd";
+import React, { useEffect, useState } from "react";
 import "../../style.scss";
 import dayjs from "dayjs";
 import { deleteWeChatBot } from "../data";
+import { toast } from "react-toastify";
+import axios from "axios";
+import { useLocation } from "react-router-dom";
+import { TbClipboardCopy } from "react-icons/tb";
 // import { useNavigate } from "react-router-dom";
 
 function WeChatBots({
@@ -22,7 +26,7 @@ function WeChatBots({
     title,
     updatedOn,
     onClickAddChatBot,
-    image
+    image,
 }) {
     // const navigate = useNavigate();
     const deleteBot = async (id) => {
@@ -32,58 +36,48 @@ function WeChatBots({
         } catch (error) { }
     };
 
-    // const formItems = () => <Form
-    //     name="myForm"
-    //     disabled={loading}
-    //     form={form}
-    //     style={{ marginTop: 70 }}
-    //     className='mx-2'
-    //     onFinish={onFormSubmit}
-    //     labelCol={{ flex: "150px" }}
-    //     labelAlign='left'
-    //     requiredMark={false}
-    //     initialValues={{
-    //         app_id: editData?.app_id || "",
-    //         secret_id: editData?.secret_id || "",
-    //     }}
-    // >
-    //     {loading ? <div className='position-absolute' style={{ top: "48%", left: "50%" }}>
-    //         <Spin />
-    //     </div> : <></>}
-    //     <Form.Item
-    //         label="APP ID"
-    //         name="app_id"
+    const [wechatModal, setWechatModal] = useState(false);
+    const [token] = useState("scanpen2024");
+    const [serverUrl] = useState("https://chatgptmall.tech/wechat/events/");
+    const [encodingAESKey] = useState("E3XZruVasWjvORGRkhgEPCUPOFUJ7keCHKI8qQZ0NwZ");
+    const [configureModal, setConfigureModal] = useState(false)
+    const [loading, setLoading] = useState(false)
+    const [formConfigure] = Form.useForm()
 
-    //         rules={[
-    //             {
-    //                 required: true,
-    //                 message: 'Please input APP ID!',
-    //             },
-    //         ]}
-    //     >
-    //         <Input placeholder="Enter APP ID" />
-    //     </Form.Item>
-    //     <Form.Item
-    //         label="Secret ID"
-    //         name="secret_id"
+    const handleConfigureSave = async () => {
+        try {
+            await formConfigure.validateFields();
+            const values = formConfigure.getFieldsValue();
+            const data = {
+                ...values,
+                official_id: official_id,
+            };
+            setLoading(true);
+            const response = await axios.post('http://localhost:8000/api/chatbots/wechat/configure/', data);
+            console.log(response);
+            toast.success('Bot integrated successfully!');
+            setConfigureModal(false);
+        } catch (error) {
+            console.error('Error integrating bot:', error);
+            toast.error('Error integrating bot. Please try again later.');
+        }
+    };
 
-    //         rules={[
-    //             {
-    //                 required: true,
-    //                 message: 'Please input Secret ID!',
-    //             },
-    //         ]}
-    //     >
-    //         <Input placeholder="Enter Secret ID" />
-    //     </Form.Item>
-
-    //     <Form.Item>
-    //     </Form.Item>
-    // </Form>
-
+    const handleCopy = (text) => {
+        navigator.clipboard.writeText(text);
+        toast.success("Copied to clipboard!", {
+            position: "top-right",
+            autoClose: 1000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "dark",
+        });
+    };
     const content = (
         <div>
-            
             {/* <p
                 onClick={onClickAddChatBot}
                 style={{ cursor: "pointer" }}
@@ -99,9 +93,18 @@ function WeChatBots({
                 // }
                 style={{ cursor: "pointer" }}
                 className="my-3 text-sm d-flex align-items-center"
+                onClick={() => setConfigureModal(true)}
             >
                 <SettingTwoTone />
                 <span className="m-0 ms-2">Configure</span>{" "}
+            </p>
+            <p
+                style={{ cursor: "pointer" }}
+                className="my-3 text-sm d-flex align-items-center"
+                onClick={() => setWechatModal(true)}
+            >
+                <SettingTwoTone />
+                <span className="m-0 ms-2">Integrate</span>{" "}
             </p>
             <p
                 style={{ cursor: "pointer" }}
@@ -177,6 +180,89 @@ function WeChatBots({
                     </div>
                 </div>
             )}
+            <Modal open={wechatModal}
+                className='chatbot-integrate-model chatbot-add-model'
+                onCancel={() => setWechatModal(false)}
+                okText={"Integrate"}
+                closable={false}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-700">WeChat Integration</h2>
+                        <p className='text-gray-500 text-sm'>
+                            Log in to the official website of the Weixin Official Accounts Platform,
+                            go to Development &gt; Basic Settings and check the agreement to become a developer.
+                            Then click the Modify Configuration button to enter the following details:
+                        </p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Token</label>
+                        <div className="flex items-center">
+                            <div className="w-full text-gray-700">
+                                {token}
+                            </div>
+                            <TbClipboardCopy onClick={() => handleCopy(token)} color='black' size={20} />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Server Address (URL)</label>
+                        <div className="flex items-center">
+                            <div className="w-full text-gray-700">
+                                {serverUrl}
+                            </div>
+                            <TbClipboardCopy onClick={() => handleCopy(serverUrl)} color='black' size={20} />
+                        </div>
+                    </div>
+                    <div className='mb-4'>
+                        <label className="block text-sm font-medium text-gray-700">EncodingAESKey</label>
+                        <div className="flex items-center">
+                            <div className="w-full text-gray-700">
+                                {encodingAESKey}
+                            </div>
+                            <TbClipboardCopy onClick={() => handleCopy(encodingAESKey)} color='black' size={20} />
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+            <Modal open={configureModal}
+                className='chatbot-integrate-model chatbot-add-model'
+                onCancel={() => setConfigureModal(false)}
+                onOk={handleConfigureSave}
+                okButtonProps={{ disabled: loading }}
+                okText={"Configure Bot"}
+                closable={false}
+            >
+                <Form
+                    labelCol={{ span: 8 }}
+                    labelAlign='left'
+                    colon={false}
+                    form={formConfigure}
+                    className='p-2 py-4'
+                    requiredMark={false}
+                    onFinish={handleConfigureSave}
+                >
+
+
+                    <Form.Item
+                        label="App ID"
+                        name="app_id"
+                        rules={[{ required: true, message: 'Please enter the phone number ID!' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Secret ID"
+                        name="secret_id"
+                        rules={[{ required: true, message: 'Please enter the access token!' }]}
+                    >
+                        <Input />
+                    </Form.Item>
+                </Form>
+
+            </Modal>
+
+
         </>
     );
 }
